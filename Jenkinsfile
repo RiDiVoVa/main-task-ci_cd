@@ -1,6 +1,6 @@
 pipeline {
   agent any
-  tools { nodejs 'node' }  // Global Tool: NodeJS с именем "node" (ты уже настроил)
+  tools { nodejs 'node' }   // Global Tool name = node
 
   environment {
     APP_IMAGE      = (env.BRANCH_NAME == 'main') ? 'nodemain' : 'nodedev'
@@ -10,33 +10,19 @@ pipeline {
   }
 
   stages {
-    stage('Checkout SCM') {
-      steps { checkout scm }
-    }
-
-    stage('Build') {
-      steps { sh 'npm install' }
-    }
-
-    stage('Test') {
-      steps { sh 'npm test' }   // В исходном репо тесты должны проходить
-    }
+    stage('Checkout SCM') { steps { checkout scm } }
+    stage('Build')        { steps { sh 'npm install' } }
+    stage('Test')         { steps { sh 'npm test'    } }
 
     stage('Docker Build') {
-      steps {
-        sh """
-          docker build -t ${APP_IMAGE}:${TAG} .
-        """
-      }
+      steps { sh "docker build -t ${APP_IMAGE}:${TAG} ." }
     }
 
     stage('Deploy') {
       steps {
         sh """
-          # удаляем ТОЛЬКО контейнер текущего env (если есть)
+          # удаляем только контейнер соответствующего env, если есть
           docker ps -a --filter "name=^/${CONTAINER_NAME}\$" -q | xargs -r docker rm -f
-
-          # запускаем
           docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:3000 ${APP_IMAGE}:${TAG}
         """
       }
@@ -45,7 +31,7 @@ pipeline {
 
   post {
     always {
-      echo "Branch: ${env.BRANCH_NAME}, image: ${APP_IMAGE}:${TAG}, port: ${HOST_PORT}"
+      echo "Branch=${env.BRANCH_NAME} image=${APP_IMAGE}:${TAG} port=${HOST_PORT}"
     }
   }
 }
